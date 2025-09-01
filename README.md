@@ -2,6 +2,8 @@
 
 A web-based 3D solar system visualization controlled entirely through hand gestures using MediaPipe Hands and Three.js.
 
+** [Watch Demo](https://youtu.be/1E28ZaeKoGE)**
+
 ## Features
 
 - **3D Solar System**: Realistic 3D rendering of all 8 planets plus the Sun
