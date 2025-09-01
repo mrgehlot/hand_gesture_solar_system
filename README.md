@@ -6,36 +6,90 @@ A web-based 3D solar system visualization controlled entirely through hand gestu
 
 - **3D Solar System**: Realistic 3D rendering of all 8 planets plus the Sun
 - **Hand Gesture Controls**: Navigate and interact using only your hand
-- **Three Detail Levels**: Get information at different depths based on hand position
+- **Two Interaction Modes**: 
+  - **Swipe Mode**: Navigate between planets with palm swipes
+  - **Rotary Dial Mode**: Adjust detail levels with circular finger movements
+- **Three Detail Levels**: Overview, Detailed, and Deep information for each celestial body
 - **Smooth Animations**: Fluid camera movements and planet rotations
+- **Real-time Hand Tracking**: Live visualization of hand landmarks and gesture detection
 - **Responsive Design**: Works on desktop and mobile devices
 
-## How to Use
+## Getting Started
+
+### Prerequisites
+
+- Modern web browser with WebGL support
+- HTTPS connection (required for camera access)
+- Camera device for hand tracking
+- Python 3.x OR Node.js (for local server)
+
+### Installation & Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/mrgehlot/hand_gesture_solar_system.git
+   cd hand_gesture_solar_system
+   ```
+
+2. **Start a local server** (choose one option):
+
+   **Option A: Using Python**
+   ```bash
+   # Python 3
+   python -m http.server 8000
+   
+   # Python 2
+   python -m SimpleHTTPServer 8000
+   ```
+
+   **Option B: Using Node.js (npx)**
+   ```bash
+   npx http-server -p 8000 --cors
+   ```
+
+3. **Open your browser**
+   - Navigate to `http://localhost:8000`
+   - Allow camera access when prompted
+   - Hold your hand in front of the camera
+   - Use the gesture controls below to explore the solar system
 
 ### Gesture Controls
 
-1. **Thumb Up**: Navigate to next planet
-2. **Thumb Down**: Navigate to previous planet
-3. **Pointing Up**: Set detail level to deep dive
-4. **Victory Sign (✌️)**: Set detail level to detailed
-5. **Thumbs Up**: Set detail level to overview
-6. **Closed Fist**: Lock current selection
-7. **Open Palm**: Unlock selection
-8. **Move Hand Closer/Farther**: Alternative way to adjust detail level
+#### Mode Switching
+- **Open Palm** ✋: Unlock and enter **Swipe Mode** for planet navigation
+- **Closed Fist** ✊: Lock and enter **Rotary Dial Mode** for detail level control
 
-### Getting Started
+#### Swipe Mode (Planet Navigation)
+- **Swipe Right** 👉: Move to next planet
+- **Swipe Left** 👈: Move to previous planet
+- *Note: Swipe gestures use palm center tracking for smooth detection*
 
-1. Open `index.html` in a modern web browser
-2. Allow camera access when prompted
-3. Hold your hand in front of the camera
-4. Use the gestures above to explore the solar system
+#### Rotary Dial Mode (Detail Level Control)
+- **Clockwise Rotation** 🔄: Increase detail level (Overview → Detailed → Deep)
+- **Counter-clockwise Rotation** 🔄: Decrease detail level (Deep → Detailed → Overview)
+- *Note: Use all five fingers in a circular motion around the center point*
+
+### Visual Feedback
+
+The application provides real-time visual feedback:
+- **Hand Landmarks**: Live tracking of all 21 hand landmarks
+- **Finger Tips**: Color-coded finger tips (Blue, Green, Yellow, Orange, Pink)
+- **Center Point**: White circle showing the calculated center for rotary dial
+- **Debug Panel**: Real-time information about current mode, planet, and gesture detection
+- **Mode Indicator**: Clear indication of whether you're in Swipe or Rotary Dial mode
 
 ## Technical Details
 
 - **3D Engine**: Three.js for WebGL rendering
-- **Hand Tracking**: MediaPipe Hands for real-time gesture detection
+- **Hand Tracking**: MediaPipe HandGestureRecognizer for real-time gesture detection
 - **Language**: Vanilla JavaScript (ES6+)
 - **Styling**: CSS3 with modern features like backdrop-filter
+
+### Gesture Detection
+- **Swipe Detection**: Continuous palm center tracking with velocity-based recognition
+- **Rotary Dial**: Multi-finger circular motion detection using angle calculations
+- **State Management**: Proper isolation between different interaction modes
+- **Debouncing**: Prevents accidental rapid gesture triggers
 
 ## Browser Requirements
 
@@ -46,34 +100,3 @@ A web-based 3D solar system visualization controlled entirely through hand gestu
 ## File Structure
 
 ```
-├── index.html          # Main HTML file
-├── main.js            # JavaScript application logic
-├── style.css          # CSS styling for UI overlay
-└── README.md          # This file
-```
-
-## Dependencies
-
-All dependencies are loaded from CDN:
-- Three.js (3D rendering)
-- MediaPipe Hands (hand tracking)
-- MediaPipe Camera Utils
-- MediaPipe Drawing Utils
-
-## Customization
-
-You can easily modify:
-- Planet information and descriptions
-- Colors and sizes
-- Gesture sensitivity
-- UI styling and positioning
-
-## Troubleshooting
-
-- **Camera not working**: Ensure you're on HTTPS and have granted camera permissions
-- **Hands not detected**: Try adjusting lighting and hand position
-- **Performance issues**: Close other browser tabs and ensure hardware acceleration is enabled
-
-## License
-
-This project is open source and available under the MIT License.

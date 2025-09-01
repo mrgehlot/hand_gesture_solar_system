@@ -353,9 +353,7 @@ class SolarSystemApp {
                 },
                 runningMode: "VIDEO"
             });
-            
-            // console.log('✅ Gesture Recognizer initialized successfully!');
-            
+        
             // Start webcam
             await this.startWebcam();
             
@@ -366,7 +364,6 @@ class SolarSystemApp {
     
     async startWebcam() {
         try {
-            // console.log('🎥 Starting webcam...');
             const constraints = { 
                 video: { 
                     width: 640, 
@@ -377,7 +374,6 @@ class SolarSystemApp {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.video.srcObject = stream;
             this.video.addEventListener('loadeddata', () => {
-                // console.log('✅ Webcam started successfully!');
                 this.webcamRunning = true;
                 this.predictWebcam();
             });
@@ -408,10 +404,7 @@ class SolarSystemApp {
     
     processGestureResults() {
         if (!this.results) return;
-        
-        // Log all results for debugging
-        // console.log('📊 Processing results:', this.results);
-        
+                
         // Update debug panel
         this.updateDebugPanel();
         
@@ -421,26 +414,17 @@ class SolarSystemApp {
             const gestureName = gesture.categoryName;
             const confidence = gesture.score;
             
-            // console.log(`🎯 Detected gesture: ${gestureName} (confidence: ${(confidence * 100).toFixed(1)}%)`);
             
             // Process gestures with lower confidence threshold
             if (confidence > 0.7) {
-                // console.log(`✅ Gesture detected: ${gestureName} (${(confidence * 100).toFixed(1)}%)`);
                 this.handleGesture(gestureName);
-            } else {
-                // console.log(`⚠️ Low confidence gesture: ${gestureName} (${(confidence * 100).toFixed(1)}%)`);
             }
-        } else {
-            // console.log('❌ No gestures detected');
         }
         
         // Process hand position for detail level
         if (this.results.landmarks && this.results.landmarks.length > 0) {
             const landmarks = this.results.landmarks[0];
-            // console.log(`✋ Hand landmarks detected: ${landmarks.length} points`);
             this.processHandPosition(landmarks);
-        } else {
-            // console.log('❌ No hand landmarks detected');
         }
     }
     
@@ -496,7 +480,6 @@ class SolarSystemApp {
     }
     
     handleGesture(gestureName) {
-        // console.log('🎯 Processing gesture:', gestureName);
         
         switch (gestureName) {
             case 'Open_Palm':
@@ -507,7 +490,6 @@ class SolarSystemApp {
                 this.rotationHistory = [];
                 break;
             case 'Closed_Fist':
-                // console.log('✅ Locking selection');
                 this.isLocked = true;
                 // Reset swipe state when locking
                 this.lastPalmPosition = null;
@@ -589,7 +571,6 @@ class SolarSystemApp {
                 y: palmCenter.y, 
                 time: currentTime 
             };
-            console.log('🔄 Initializing palm position:', this.lastPalmPosition);
             return;
         }
         
@@ -597,37 +578,26 @@ class SolarSystemApp {
         const deltaY = palmCenter.y - this.lastPalmPosition.y;
         const deltaTime = currentTime - this.lastPalmPosition.time;
         
-        // Debug logging
-        console.log(` Palm Debug: deltaX=${deltaX.toFixed(4)}, deltaY=${deltaY.toFixed(4)}, deltaTime=${deltaTime}ms`);
-        
         // Only process if enough time has passed (avoid too frequent updates)
         if (deltaTime < 16) return; // ~60fps
         
         // Calculate velocity
         const velocity = Math.abs(deltaX) / deltaTime;
-        console.log(`📊 Velocity: ${velocity.toFixed(4)} pixels/ms (threshold: ${this.swipeVelocityThreshold})`);
         
         // Check for fast horizontal movement (swipe) - adjusted thresholds
         if (deltaTime > 0 && Math.abs(deltaX) > 0.01 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-            console.log(`✅ Swipe conditions met: deltaX=${Math.abs(deltaX).toFixed(4)}, deltaY=${Math.abs(deltaY).toFixed(4)}`);
             
             // Check if velocity is high enough and cooldown has passed
             if (velocity > this.swipeVelocityThreshold && currentTime - this.lastSwipeTime > this.swipeCooldown) {
                 if (deltaX > 0) {
                     // Swipe right - next planet
-                    console.log(' Swipe Right - Next Planet');
                     this.nextPlanet();
                 } else {
                     // Swipe left - previous planet
-                    console.log('👈 Swipe Left - Previous Planet');
                     this.previousPlanet();
                 }
                 this.lastSwipeTime = currentTime;
-            } else {
-                console.log(`❌ Velocity too low or cooldown active: velocity=${velocity.toFixed(4)}, cooldown=${currentTime - this.lastSwipeTime}ms`);
-            }
-        } else {
-            console.log(`❌ Swipe conditions not met: deltaX=${Math.abs(deltaX).toFixed(4)}, deltaY=${Math.abs(deltaY).toFixed(4)}`);
+            } 
         }
         
         // Update last palm position
@@ -778,34 +748,28 @@ class SolarSystemApp {
             // Clockwise rotation - increase detail level
             switch (currentLevel) {
                 case 'overview':
-                    // console.log('🔄 Clockwise → Detailed');
                     this.setDetailLevel('detailed');
                     this.lastDetailChangeTime = currentTime;
                     break;
                 case 'detailed':
-                    // console.log('🔄 Clockwise → Deep');
                     this.setDetailLevel('deep');
                     this.lastDetailChangeTime = currentTime;
                     break;
                 case 'deep':
-                    // console.log(' Already at maximum detail');
                     break;
             }
         } else if (rotationDirection < 0) {
             // Counter-clockwise rotation - decrease detail level
             switch (currentLevel) {
                 case 'deep':
-                    // console.log('🔄 Counter-clockwise → Detailed');
                     this.setDetailLevel('detailed');
                     this.lastDetailChangeTime = currentTime;
                     break;
                 case 'detailed':
-                    // console.log('🔄 Counter-clockwise → Overview');
                     this.setDetailLevel('overview');
                     this.lastDetailChangeTime = currentTime;
                     break;
                 case 'overview':
-                    // console.log(' Already at minimum detail');
                     break;
             }
         }
