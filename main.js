@@ -233,14 +233,22 @@ class SolarSystemApp {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        // Enhanced lighting system
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
         this.scene.add(ambientLight);
         
-        const sunLight = new THREE.PointLight(0xffffff, 2, 100);
+        // Main sun light
+        const sunLight = new THREE.PointLight(0xffffff, 3, 200);
         sunLight.position.set(0, 0, 0);
         sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
         this.scene.add(sunLight);
+        
+        // Additional rim lighting for better planet visibility
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        rimLight.position.set(50, 50, 50);
+        this.scene.add(rimLight);
         
         // Stars background
         this.createStarField();
@@ -277,13 +285,25 @@ class SolarSystemApp {
         this.planets = [];
         
         this.planetData.forEach((planetInfo, index) => {
-            // Create planet geometry
-            const geometry = new THREE.SphereGeometry(planetInfo.radius, 32, 32);
-            const material = new THREE.MeshLambertMaterial({ 
-                color: planetInfo.color,
-                emissive: planetInfo.name === 'Sun' ? 0xffff00 : 0x000000,
-                emissiveIntensity: planetInfo.name === 'Sun' ? 0.2 : 0
-            });
+            // Create planet geometry with higher resolution
+            const geometry = new THREE.SphereGeometry(planetInfo.radius, 64, 64);
+            
+            let material;
+            
+            if (planetInfo.name === 'Sun') {
+                // Sun with glowing effect
+                material = new THREE.MeshBasicMaterial({ 
+                    color: 0xffff00,
+                    emissive: 0xffaa00,
+                    emissiveIntensity: 0.8
+                });
+                
+                // Add sun glow effect
+                this.createSunGlow(planetInfo.radius);
+            } else {
+                // Create realistic planet material
+                material = this.createPlanetMaterial(planetInfo);
+            }
             
             const planet = new THREE.Mesh(geometry, material);
             
@@ -312,13 +332,115 @@ class SolarSystemApp {
         this.updatePlanetInfo();
     }
     
+    // Create sun glow effect
+    createSunGlow(radius) {
+        // Create a larger sphere for the glow effect
+        const glowGeometry = new THREE.SphereGeometry(radius * 1.5, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.set(0, 0, 0);
+        this.scene.add(glow);
+        
+        // Add corona effect
+        const coronaGeometry = new THREE.SphereGeometry(radius * 2, 32, 32);
+        const coronaMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0.1,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const corona = new THREE.Mesh(coronaGeometry, coronaMaterial);
+        corona.position.set(0, 0, 0);
+        this.scene.add(corona);
+    }
+    
+    // Create realistic planet materials
+    createPlanetMaterial(planetInfo) {
+        const material = new THREE.MeshPhongMaterial({
+            color: planetInfo.color,
+            shininess: planetInfo.shininess || 30,
+            specular: planetInfo.specular || 0x111111,
+            transparent: false
+        });
+        
+        // Add specific enhancements for each planet
+        switch (planetInfo.name) {
+            case 'Mercury':
+                // Mercury - rocky, cratered surface
+                material.color.setHex(0x8c7853);
+                material.shininess = 10;
+                material.specular.setHex(0x222222);
+                break;
+                
+            case 'Venus':
+                // Venus - thick atmosphere, yellowish
+                material.color.setHex(0xffa500);
+                material.shininess = 5;
+                material.specular.setHex(0x444444);
+                break;
+                
+            case 'Earth':
+                // Earth - blue oceans, green continents
+                material.color.setHex(0x0077ff);
+                material.shininess = 50;
+                material.specular.setHex(0x0066cc);
+                break;
+                
+            case 'Mars':
+                // Mars - red, rusty surface
+                material.color.setHex(0xff4500);
+                material.shininess = 20;
+                material.specular.setHex(0xcc3300);
+                break;
+                
+            case 'Jupiter':
+                // Jupiter - gas giant with bands
+                material.color.setHex(0xffd700);
+                material.shininess = 100;
+                material.specular.setHex(0xffff00);
+                break;
+                
+            case 'Saturn':
+                // Saturn - golden gas giant
+                material.color.setHex(0xffd700);
+                material.shininess = 80;
+                material.specular.setHex(0xffaa00);
+                break;
+                
+            case 'Uranus':
+                // Uranus - ice giant, blue-green
+                material.color.setHex(0x00ffff);
+                material.shininess = 60;
+                material.specular.setHex(0x00aaaa);
+                break;
+                
+            case 'Neptune':
+                // Neptune - deep blue ice giant
+                material.color.setHex(0x0000ff);
+                material.shininess = 70;
+                material.specular.setHex(0x0066ff);
+                break;
+        }
+        
+        return material;
+    }
+    
+    // Enhanced orbit rings with better visual quality
     createOrbitRing(distance) {
-        const ringGeometry = new THREE.RingGeometry(distance - 0.1, distance + 0.1, 64);
+        const ringGeometry = new THREE.RingGeometry(distance - 0.1, distance + 0.1, 128);
         const ringMaterial = new THREE.MeshBasicMaterial({ 
             color: 0x444444, 
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.3
+            opacity: 0.2,
+            blending: THREE.AdditiveBlending
         });
         
         const ring = new THREE.Mesh(ringGeometry, ringMaterial);
