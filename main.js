@@ -40,6 +40,7 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 0, // Sun doesn't orbit
                 orbitalSpeed: 0,
+                moons: [], // Sun has no moons
                 description: {
                     overview: 'The Sun is the star at the center of our Solar System.',
                     detailed: 'A yellow dwarf star, the Sun provides light and heat to all planets. It contains 99.86% of the Solar System\'s mass.',
@@ -54,6 +55,7 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 88, // Earth days
                 orbitalSpeed: 0.01, // Speed multiplier for animation
+                moons: [], // Mercury has no moons
                 description: {
                     overview: 'Mercury is the smallest and innermost planet in the Solar System.',
                     detailed: 'Mercury has no moons and no atmosphere. It\'s heavily cratered and experiences extreme temperature variations.',
@@ -68,6 +70,7 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 225, // Earth days
                 orbitalSpeed: 0.008,
+                moons: [], // Venus has no moons
                 description: {
                     overview: 'Venus is the second planet from the Sun and Earth\'s closest planetary neighbor.',
                     detailed: 'Venus has a thick atmosphere of carbon dioxide and sulfuric acid clouds. It\'s the hottest planet in our Solar System.',
@@ -82,6 +85,9 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 365, // Earth days
                 orbitalSpeed: 0.006,
+                moons: [
+                    { name: 'Moon', radius: 0.3, distance: 2.5, color: 0xcccccc, orbitalSpeed: 0.02 }
+                ],
                 description: {
                     overview: 'Earth is our home planet and the only known planet with life.',
                     detailed: 'Earth has one moon, liquid water, and a protective atmosphere. It\'s the only planet known to support life.',
@@ -96,6 +102,10 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 687, // Earth days
                 orbitalSpeed: 0.005,
+                moons: [
+                    { name: 'Phobos', radius: 0.15, distance: 1.8, color: 0x8b4513, orbitalSpeed: 0.03 },
+                    { name: 'Deimos', radius: 0.12, distance: 2.2, color: 0x654321, orbitalSpeed: 0.025 }
+                ],
                 description: {
                     overview: 'Mars is the fourth planet from the Sun, often called the Red Planet.',
                     detailed: 'Mars has two moons, thin atmosphere, and evidence of ancient water. It\'s a target for future human exploration.',
@@ -110,6 +120,12 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 4333, // Earth days
                 orbitalSpeed: 0.003,
+                moons: [
+                    { name: 'Io', radius: 0.4, distance: 4.5, color: 0xff8c00, orbitalSpeed: 0.04 },
+                    { name: 'Europa', radius: 0.35, distance: 5.0, color: 0x87ceeb, orbitalSpeed: 0.035 },
+                    { name: 'Ganymede', radius: 0.5, distance: 5.5, color: 0x8b4513, orbitalSpeed: 0.03 },
+                    { name: 'Callisto', radius: 0.45, distance: 6.0, color: 0x696969, orbitalSpeed: 0.025 }
+                ],
                 description: {
                     overview: 'Jupiter is the largest planet in our Solar System.',
                     detailed: 'Jupiter is a gas giant with 79 known moons. It has a Great Red Spot storm that has raged for centuries.',
@@ -124,6 +140,11 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 10759, // Earth days
                 orbitalSpeed: 0.002,
+                moons: [
+                    { name: 'Titan', radius: 0.4, distance: 4.0, color: 0xffa500, orbitalSpeed: 0.035 },
+                    { name: 'Enceladus', radius: 0.2, distance: 3.5, color: 0xffffff, orbitalSpeed: 0.04 },
+                    { name: 'Mimas', radius: 0.15, distance: 3.0, color: 0xcccccc, orbitalSpeed: 0.045 }
+                ],
                 description: {
                     overview: 'Saturn is famous for its spectacular ring system.',
                     detailed: 'Saturn has 82 moons and beautiful rings made of ice, rock, and dust. It\'s the least dense planet in our Solar System.',
@@ -138,6 +159,11 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 30687, // Earth days
                 orbitalSpeed: 0.0015,
+                moons: [
+                    { name: 'Miranda', radius: 0.15, distance: 3.0, color: 0x8b4513, orbitalSpeed: 0.04 },
+                    { name: 'Ariel', radius: 0.2, distance: 3.5, color: 0xcccccc, orbitalSpeed: 0.035 },
+                    { name: 'Umbriel', radius: 0.18, distance: 4.0, color: 0x696969, orbitalSpeed: 0.03 }
+                ],
                 description: {
                     overview: 'Uranus is the seventh planet from the Sun and an ice giant.',
                     detailed: 'Uranus rotates on its side and has 27 moons. It appears blue-green due to methane in its atmosphere.',
@@ -152,6 +178,10 @@ class SolarSystemApp {
                 texture: null,
                 orbitalPeriod: 60190, // Earth days
                 orbitalSpeed: 0.001,
+                moons: [
+                    { name: 'Triton', radius: 0.25, distance: 3.0, color: 0x87ceeb, orbitalSpeed: 0.035 },
+                    { name: 'Proteus', radius: 0.2, distance: 3.5, color: 0x696969, orbitalSpeed: 0.03 }
+                ],
                 description: {
                     overview: 'Neptune is the eighth and farthest known planet from the Sun.',
                     detailed: 'Neptune is an ice giant with 14 moons and the strongest winds in the Solar System, reaching 2,100 km/h.',
@@ -177,7 +207,7 @@ class SolarSystemApp {
         this.swipeThreshold = 0.15; // Minimum distance for swipe (15% of screen)
         this.swipeTimeThreshold = 500; // Maximum time for swipe (500ms)
         this.lastSwipeTime = 0;
-        this.swipeCooldown = 800; // Cooldown between swipes (800ms)
+        this.swipeCooldown = 500; // Cooldown between swipes (800ms)
         
         // Continuous swipe detection
         this.lastPalmPosition = null;
@@ -187,6 +217,17 @@ class SolarSystemApp {
         this.isTrackingPlanet = false;
         this.trackingPlanetIndex = -1;
         this.cameraOffset = new THREE.Vector3(0, 10, 20);
+        
+        // Zoom state variables
+        this.isZoomedIn = false;
+        this.zoomTarget = null;
+        this.originalCameraOffset = new THREE.Vector3(0, 10, 20);
+        this.zoomedCameraOffset = new THREE.Vector3(0, 2, 8);
+        this.zoomTransitionProgress = 0;
+        this.zoomTransitionDuration = 1000; // 1 second
+        this.zoomStartTime = 0;
+        this.zoomedPlanetIndex = -1; // Track which planet is zoomed in
+        this.isRevolvingAroundPlanet = false; // Track if we're revolving around a specific planet
         
         this.init();
     }
@@ -313,13 +354,37 @@ class SolarSystemApp {
             // Add to scene
             this.scene.add(planet);
             
-            // Store reference with orbital data
+            // Create moons for this planet
+            const moons = [];
+            planetInfo.moons.forEach((moonInfo, moonIndex) => {
+                const moonGeometry = new THREE.SphereGeometry(moonInfo.radius, 32, 32);
+                const moonMaterial = new THREE.MeshPhongMaterial({ color: moonInfo.color });
+                const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+                
+                // Position moon relative to planet
+                moon.position.x = moonInfo.distance;
+                moon.position.y = (moonIndex - (planetInfo.moons.length - 1) / 2) * 0.5; // Stack moons vertically
+                
+                // Add moon to planet (so it moves with the planet)
+                planet.add(moon);
+                
+                // Store moon data
+                moons.push({
+                    mesh: moon,
+                    data: moonInfo,
+                    orbitalAngle: Math.random() * Math.PI * 2,
+                    orbitalRadius: moonInfo.distance
+                });
+            });
+            
+            // Store reference with orbital data and moons
             this.planets.push({
                 mesh: planet,
                 data: planetInfo,
                 index: index,
-                orbitalAngle: Math.random() * Math.PI * 2, // Random starting position
-                orbitalRadius: planetInfo.distance
+                orbitalAngle: Math.random() * Math.PI * 2,
+                orbitalRadius: planetInfo.distance,
+                moons: moons
             });
             
             // Add orbit ring for non-sun planets
@@ -564,7 +629,7 @@ class SolarSystemApp {
             const confidence = gesture.score;
             
             // Process gestures with lower confidence threshold
-            if (confidence > 0.7) {
+            if (confidence > 0.6) {
                 this.handleGesture(gestureName);
             } else{
 
@@ -636,6 +701,10 @@ class SolarSystemApp {
     handleGesture(gestureName) {
         switch (gestureName) {
             case 'Open_Palm':
+                if (this.isZoomedIn) {
+                    // Zoom out but continue revolving around the same planet
+                    this.zoomOutButKeepRevolving();
+                }
                 this.isLocked = false;
                 // Reset any ongoing gestures and rotary dial state
                 this.lastPalmPosition = null;
@@ -643,6 +712,10 @@ class SolarSystemApp {
                 this.rotationHistory = [];
                 break;
             case 'Closed_Fist':
+                if (!this.isZoomedIn) {
+                    // Zoom in to current planet and halt its movement
+                    this.zoomInAndHaltPlanet();
+                }
                 this.isLocked = true;
                 // Reset swipe state when locking
                 this.lastPalmPosition = null;
@@ -1264,25 +1337,47 @@ class SolarSystemApp {
     animate() {
         requestAnimationFrame(() => this.animate());
         
+        // Update zoom transition
+        this.updateZoomTransition();
+        
         // Animate planets with orbital mechanics
         this.planets.forEach(planet => {
             if (planet.data.name !== 'Sun') {
-                // Rotate planet on its axis
+                // Rotate planet on its axis (always happens)
                 planet.mesh.rotation.y += 0.005;
                 
-                // Update orbital position
-                planet.orbitalAngle += planet.data.orbitalSpeed;
+                // Enhanced rotation when zoomed in
+                if (planet.mesh.userData.enhancedRotation) {
+                    planet.mesh.rotation.y += 0.02; // 4x faster rotation
+                }
                 
-                // Calculate new position based on orbital angle
-                const x = Math.cos(planet.orbitalAngle) * planet.orbitalRadius;
-                const z = Math.sin(planet.orbitalAngle) * planet.orbitalRadius;
-                
-                // Update planet position
-                planet.mesh.position.x = x;
-                planet.mesh.position.z = z;
+                // Only update orbital position if NOT halted
+                if (!planet.mesh.userData.orbitalHalted) {
+                    planet.orbitalAngle += planet.data.orbitalSpeed;
+                    
+                    // Calculate new position based on orbital angle
+                    const x = Math.cos(planet.orbitalAngle) * planet.orbitalRadius;
+                    const z = Math.sin(planet.orbitalAngle) * planet.orbitalRadius;
+                    
+                    // Update planet position
+                    planet.mesh.position.x = x;
+                    planet.mesh.position.z = z;
+                }
                 
                 // Keep Y position at 0 for flat orbital plane
                 planet.mesh.position.y = 0;
+                
+                // Animate moons
+                planet.moons.forEach(moon => {
+                    if (moon.mesh.userData.orbiting && !moon.mesh.userData.orbitalHalted) {
+                        // Moon orbits around planet
+                        moon.orbitalAngle += moon.data.orbitalSpeed;
+                        const moonX = Math.cos(moon.orbitalAngle) * moon.orbitalRadius;
+                        const moonZ = Math.sin(moon.orbitalAngle) * moon.orbitalRadius;
+                        moon.mesh.position.x = moonX;
+                        moon.mesh.position.z = moonZ;
+                    }
+                });
             } else {
                 // Sun rotates on its axis
                 planet.mesh.rotation.y += 0.002;
@@ -1294,6 +1389,128 @@ class SolarSystemApp {
         
         // Render
         this.renderer.render(this.scene, this.camera);
+    }
+
+    zoomIn() {
+        if (this.isZoomedIn) return;
+        
+        this.isZoomedIn = true;
+        this.zoomTarget = this.planets[this.currentPlanetIndex];
+        this.zoomStartTime = Date.now();
+        
+        console.log(`Zooming in to ${this.zoomTarget.data.name}`);
+        
+        // Update UI to show zoom status
+        document.getElementById('planet-status').style.transform = 'scale(1.2)';
+        document.getElementById('planet-status').style.transition = 'transform 0.3s ease';
+    }
+
+    zoomOut() {
+        if (!this.isZoomedIn) return;
+        
+        this.isZoomedIn = false;
+        this.zoomTarget = null;
+        this.zoomStartTime = Date.now();
+        
+        console.log('Zooming out to overview');
+        
+        // Reset UI
+        document.getElementById('planet-status').style.transform = 'scale(1)';
+        document.getElementById('planet-status').style.transition = 'transform 0.3s ease';
+    }
+
+    updateZoomTransition() {
+        if (!this.isZoomedIn || !this.zoomTarget) return;
+        
+        const currentTime = Date.now();
+        const elapsed = currentTime - this.zoomStartTime;
+        const progress = Math.min(elapsed / this.zoomTransitionDuration, 1);
+        
+        // Smooth easing
+        const easeProgress = this.easeOutCubic(progress);
+        
+        // Interpolate camera offset
+        this.cameraOffset.lerpVectors(
+            this.originalCameraOffset, 
+            this.zoomedCameraOffset, 
+            easeProgress
+        );
+        
+        // If zoom transition is complete, start enhanced planet rotation
+        if (progress >= 1) {
+            this.startEnhancedPlanetRotation();
+        }
+    }
+
+    startEnhancedPlanetRotation() {
+        if (!this.isZoomedIn || !this.zoomTarget) return;
+        
+        // Enable enhanced rotation for the zoomed planet (only on its axis, not orbital)
+        this.zoomTarget.mesh.userData.enhancedRotation = true;
+        
+        // Enable moon orbiting around the halted planet
+        this.zoomTarget.moons.forEach(moon => {
+            moon.mesh.userData.orbiting = true;
+        });
+    }
+
+    stopEnhancedPlanetRotation() {
+        if (this.zoomTarget) {
+            this.zoomTarget.mesh.userData.enhancedRotation = false;
+            this.zoomTarget.moons.forEach(moon => {
+                moon.mesh.userData.orbiting = false;
+            });
+        }
+    }
+
+    zoomInAndHaltPlanet() {
+        if (this.isZoomedIn) return;
+        
+        this.isZoomedIn = true;
+        this.zoomedPlanetIndex = this.currentPlanetIndex;
+        this.zoomTarget = this.planets[this.currentPlanetIndex];
+        this.zoomStartTime = Date.now();
+        
+        console.log(`Zooming in to ${this.zoomTarget.data.name} - Planet halted for reading`);
+        
+        // Halt the planet's orbital movement
+        this.zoomTarget.mesh.userData.orbitalHalted = true;
+        
+        // Halt moon orbital movement
+        this.zoomTarget.moons.forEach(moon => {
+            moon.mesh.userData.orbitalHalted = true;
+        });
+        
+        // Update UI to show zoom status
+        document.getElementById('planet-status').style.transform = 'scale(1.2)';
+        document.getElementById('planet-status').style.transition = 'transform 0.3s ease';
+        
+    }
+
+    zoomOutButKeepRevolving() {
+        if (!this.isZoomedIn) return;
+        
+        this.isZoomedIn = false;
+        this.zoomStartTime = Date.now();
+        
+        console.log(`Zooming out from ${this.zoomTarget.data.name} - Continuing to revolve around it`);
+        
+        // Resume planet orbital movement but keep it as the focus
+        this.zoomTarget.mesh.userData.orbitalHalted = false;
+        
+        // Resume moon orbital movement
+        this.zoomTarget.moons.forEach(moon => {
+            moon.mesh.userData.orbitalHalted = false;
+        });
+        
+        // Set this planet as the one to revolve around
+        this.isRevolvingAroundPlanet = true;
+        this.trackingPlanetIndex = this.zoomedPlanetIndex;
+        
+        // Reset UI
+        document.getElementById('planet-status').style.transform = 'scale(1)';
+        document.getElementById('planet-status').style.transition = 'transform 0.3s ease';
+        
     }
 }
 
