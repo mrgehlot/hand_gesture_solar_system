@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solar System - Hand Gesture Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <!-- 3D Canvas will be inserted here -->
+        <canvas id="webgl"></canvas>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <!-- Planet Info at Top -->
+            <div id="planet-info" class="info-text">
+                <div id="planet-description">Welcome to the Solar System! Use hand gestures to explore.</div>
+            </div>
+            
+            <!-- Planet Name and Detail Level at Bottom -->
+            <div id="planet-status" class="status-text">
+                <div id="planet-name">Solar System</div>
+                <div id="detail-level">Overview</div>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading">
+            <div class="loading-text">Loading Solar System...</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
