@@ -30,7 +30,7 @@ class SolarSystemApp {
         this.lastVideoTime = -1;
         this.results = null;
         
-        // Planet data
+        // Planet data with orbital information
         this.planetData = [
             {
                 name: 'Sun',
@@ -38,6 +38,8 @@ class SolarSystemApp {
                 distance: 0,
                 color: 0xffff00,
                 texture: null,
+                orbitalPeriod: 0, // Sun doesn't orbit
+                orbitalSpeed: 0,
                 description: {
                     overview: 'The Sun is the star at the center of our Solar System.',
                     detailed: 'A yellow dwarf star, the Sun provides light and heat to all planets. It contains 99.86% of the Solar System\'s mass.',
@@ -50,6 +52,8 @@ class SolarSystemApp {
                 distance: 15,
                 color: 0x8c7853,
                 texture: null,
+                orbitalPeriod: 88, // Earth days
+                orbitalSpeed: 0.01, // Speed multiplier for animation
                 description: {
                     overview: 'Mercury is the smallest and innermost planet in the Solar System.',
                     detailed: 'Mercury has no moons and no atmosphere. It\'s heavily cratered and experiences extreme temperature variations.',
@@ -62,6 +66,8 @@ class SolarSystemApp {
                 distance: 22,
                 color: 0xffa500,
                 texture: null,
+                orbitalPeriod: 225, // Earth days
+                orbitalSpeed: 0.008,
                 description: {
                     overview: 'Venus is the second planet from the Sun and Earth\'s closest planetary neighbor.',
                     detailed: 'Venus has a thick atmosphere of carbon dioxide and sulfuric acid clouds. It\'s the hottest planet in our Solar System.',
@@ -74,6 +80,8 @@ class SolarSystemApp {
                 distance: 30,
                 color: 0x0077ff,
                 texture: null,
+                orbitalPeriod: 365, // Earth days
+                orbitalSpeed: 0.006,
                 description: {
                     overview: 'Earth is our home planet and the only known planet with life.',
                     detailed: 'Earth has one moon, liquid water, and a protective atmosphere. It\'s the only planet known to support life.',
@@ -86,6 +94,8 @@ class SolarSystemApp {
                 distance: 38,
                 color: 0xff4500,
                 texture: null,
+                orbitalPeriod: 687, // Earth days
+                orbitalSpeed: 0.005,
                 description: {
                     overview: 'Mars is the fourth planet from the Sun, often called the Red Planet.',
                     detailed: 'Mars has two moons, thin atmosphere, and evidence of ancient water. It\'s a target for future human exploration.',
@@ -98,6 +108,8 @@ class SolarSystemApp {
                 distance: 50,
                 color: 0xffd700,
                 texture: null,
+                orbitalPeriod: 4333, // Earth days
+                orbitalSpeed: 0.003,
                 description: {
                     overview: 'Jupiter is the largest planet in our Solar System.',
                     detailed: 'Jupiter is a gas giant with 79 known moons. It has a Great Red Spot storm that has raged for centuries.',
@@ -110,6 +122,8 @@ class SolarSystemApp {
                 distance: 65,
                 color: 0xffd700,
                 texture: null,
+                orbitalPeriod: 10759, // Earth days
+                orbitalSpeed: 0.002,
                 description: {
                     overview: 'Saturn is famous for its spectacular ring system.',
                     detailed: 'Saturn has 82 moons and beautiful rings made of ice, rock, and dust. It\'s the least dense planet in our Solar System.',
@@ -122,6 +136,8 @@ class SolarSystemApp {
                 distance: 80,
                 color: 0x00ffff,
                 texture: null,
+                orbitalPeriod: 30687, // Earth days
+                orbitalSpeed: 0.0015,
                 description: {
                     overview: 'Uranus is the seventh planet from the Sun and an ice giant.',
                     detailed: 'Uranus rotates on its side and has 27 moons. It appears blue-green due to methane in its atmosphere.',
@@ -134,6 +150,8 @@ class SolarSystemApp {
                 distance: 95,
                 color: 0x0000ff,
                 texture: null,
+                orbitalPeriod: 60190, // Earth days
+                orbitalSpeed: 0.001,
                 description: {
                     overview: 'Neptune is the eighth and farthest known planet from the Sun.',
                     detailed: 'Neptune is an ice giant with 14 moons and the strongest winds in the Solar System, reaching 2,100 km/h.',
@@ -164,6 +182,11 @@ class SolarSystemApp {
         // Continuous swipe detection
         this.lastPalmPosition = null;
         this.swipeVelocityThreshold = 0.001; // Much lower threshold for normalized coordinates
+        
+        // Planet tracking
+        this.isTrackingPlanet = false;
+        this.trackingPlanetIndex = -1;
+        this.cameraOffset = new THREE.Vector3(0, 10, 20);
         
         this.init();
     }
@@ -270,11 +293,13 @@ class SolarSystemApp {
             // Add to scene
             this.scene.add(planet);
             
-            // Store reference
+            // Store reference with orbital data
             this.planets.push({
                 mesh: planet,
                 data: planetInfo,
-                index: index
+                index: index,
+                orbitalAngle: Math.random() * Math.PI * 2, // Random starting position
+                orbitalRadius: planetInfo.distance
             });
             
             // Add orbit ring for non-sun planets
@@ -1009,13 +1034,39 @@ class SolarSystemApp {
         const targetPosition = planet.mesh.position.clone();
         
         // Move camera to focus on planet
-        const cameraOffset = new THREE.Vector3(0, 10, 20);
-        const targetCameraPosition = targetPosition.clone().add(cameraOffset);
+        const targetCameraPosition = targetPosition.clone().add(this.cameraOffset);
         
         // Smooth camera movement
         this.animateCameraTo(targetCameraPosition, targetPosition);
         
+        // Enable continuous tracking
+        this.isTrackingPlanet = true;
+        this.trackingPlanetIndex = this.currentPlanetIndex;
+        
         this.updatePlanetInfo();
+    }
+    
+    // Add method to stop tracking
+    stopTracking() {
+        this.isTrackingPlanet = false;
+        this.trackingPlanetIndex = -1;
+    }
+    
+    // Add method to update camera tracking
+    updateCameraTracking() {
+        if (this.isTrackingPlanet && this.trackingPlanetIndex >= 0) {
+            const planet = this.planets[this.trackingPlanetIndex];
+            const planetPosition = planet.mesh.position.clone();
+            
+            // Calculate new camera position relative to planet
+            const targetCameraPosition = planetPosition.clone().add(this.cameraOffset);
+            
+            // Smooth camera movement to follow planet
+            this.camera.position.lerp(targetCameraPosition, 0.05);
+            
+            // Always look at the planet
+            this.camera.lookAt(planetPosition);
+        }
     }
     
     animateCameraTo(targetPosition, lookAtTarget) {
@@ -1081,14 +1132,33 @@ class SolarSystemApp {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        // Rotate planets slowly
+        // Animate planets with orbital mechanics
         this.planets.forEach(planet => {
             if (planet.data.name !== 'Sun') {
+                // Rotate planet on its axis
                 planet.mesh.rotation.y += 0.005;
+                
+                // Update orbital position
+                planet.orbitalAngle += planet.data.orbitalSpeed;
+                
+                // Calculate new position based on orbital angle
+                const x = Math.cos(planet.orbitalAngle) * planet.orbitalRadius;
+                const z = Math.sin(planet.orbitalAngle) * planet.orbitalRadius;
+                
+                // Update planet position
+                planet.mesh.position.x = x;
+                planet.mesh.position.z = z;
+                
+                // Keep Y position at 0 for flat orbital plane
+                planet.mesh.position.y = 0;
+            } else {
+                // Sun rotates on its axis
+                planet.mesh.rotation.y += 0.002;
             }
         });
         
-
+        // Update camera tracking if enabled
+        this.updateCameraTracking();
         
         // Render
         this.renderer.render(this.scene, this.camera);
