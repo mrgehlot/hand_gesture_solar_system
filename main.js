@@ -149,6 +149,10 @@ class SolarSystemApp {
         this.lastFingerPositions = null;
         this.rotationHistory = [];
         
+        // Add debouncing for detail level changes
+        this.lastDetailChangeTime = 0;
+        this.detailChangeCooldown = 1000; // 1 second cooldown between changes
+        
         this.init();
     }
     
@@ -338,7 +342,7 @@ class SolarSystemApp {
                 runningMode: "VIDEO"
             });
             
-            console.log('✅ Gesture Recognizer initialized successfully!');
+            // console.log('✅ Gesture Recognizer initialized successfully!');
             
             // Start webcam
             await this.startWebcam();
@@ -350,7 +354,7 @@ class SolarSystemApp {
     
     async startWebcam() {
         try {
-            console.log('🎥 Starting webcam...');
+            // console.log('🎥 Starting webcam...');
             const constraints = { 
                 video: { 
                     width: 640, 
@@ -361,7 +365,7 @@ class SolarSystemApp {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.video.srcObject = stream;
             this.video.addEventListener('loadeddata', () => {
-                console.log('✅ Webcam started successfully!');
+                // console.log('✅ Webcam started successfully!');
                 this.webcamRunning = true;
                 this.predictWebcam();
             });
@@ -464,55 +468,57 @@ class SolarSystemApp {
         switch (gestureName) {
             case 'Thumb_up':
             case 'Thumbs_Up':
-                console.log('✅ Next planet');
+                // console.log('✅ Next planet');
                 this.nextPlanet();
                 break;
             case 'Thumb_down':
-                console.log('✅ Previous planet');
+                // console.log('✅ Previous planet');
                 this.previousPlanet();
                 break;
             case 'Open_Palm':
-                console.log('✅ Unlocking selection');
+                // console.log('✅ Unlocking selection');
                 this.isLocked = false;
                 break;
             case 'Closed_Fist':
-                console.log('✅ Locking selection');
+                // console.log('✅ Locking selection');
                 this.isLocked = true;
                 break;
             case 'Pointing_Up':
-                console.log('✅ Setting detail to deep');
+                // console.log('✅ Setting detail to deep');
                 this.setDetailLevel('deep');
                 break;
             case 'Victory':
-                console.log('✅ Setting detail to detailed');
+                // console.log('✅ Setting detail to detailed');
                 this.setDetailLevel('detailed');
                 break;
             case 'ILoveYou':
-                console.log('✅ Setting detail to overview');
+                // console.log('✅ Setting detail to overview');
                 this.setDetailLevel('overview');
                 break;
             default:
                 // console.log('❓ Unknown gesture:', gestureName);
                 // Try to map similar gestures
                 if (gestureName.includes('Thumb') || gestureName.includes('Up')) {
-                    console.log('🔄 Mapping to next planet');
+                    // console.log('🔄 Mapping to next planet');
                     this.nextPlanet();
                 } else if (gestureName.includes('Down')) {
-                    console.log('🔄 Mapping to previous planet');
+                    // console.log('🔄 Mapping to previous planet');
                     this.previousPlanet();
                 }
         }
     }
     
     processHandPosition(landmarks) {
-        // Get finger tip positions for rotary dial detection
+        // Get all finger tip positions for rotary dial detection
         const thumbTip = landmarks[4];    // Thumb tip
         const indexTip = landmarks[8];    // Index finger tip
         const middleTip = landmarks[12];  // Middle finger tip
+        const ringTip = landmarks[16];    // Ring finger tip
+        const pinkyTip = landmarks[20];   // Pinky finger tip
         
-        // Calculate center point of the three finger tips
-        const centerX = (thumbTip.x + indexTip.x + middleTip.x) / 3;
-        const centerY = (thumbTip.y + indexTip.y + middleTip.y) / 3;
+        // Calculate center point of all five finger tips
+        const centerX = (thumbTip.x + indexTip.x + middleTip.x + ringTip.x + pinkyTip.x) / 5;
+        const centerY = (thumbTip.y + indexTip.y + middleTip.y + ringTip.y + pinkyTip.y) / 5;
         
         // Check for fist-to-palm transition for calibration
         const isFist = this.detectFist(landmarks);
@@ -522,69 +528,128 @@ class SolarSystemApp {
         if (wasFist && !isFist) {
             // User just opened their palm - calibrate Z-depth
             this.calibrateZDepth(thumbTip.z); // Use thumb tip Z for calibration
-            console.log(`🔌 Z-Depth Calibrated: ${thumbTip.z.toFixed(3)} (far reference)`);
         }
         
         // Update last gesture for next frame
         this.lastGesture = isFist ? 'Closed_Fist' : 'Open_Palm';
         
-        // Check if fingers are in a dial formation
-        const isDialFormation = this.checkDialFormation(landmarks);
+        // Simple check: if we have a center point and fingers are spread out enough
+        const isDialFormation = this.checkSimpleDialFormation(landmarks);
         
         if (isDialFormation) {
-            // Calculate rotation direction and magnitude
-            const currentRotation = this.calculateRotationDirection(landmarks);
+            // Calculate rotation direction and magnitude based on center point movement
+            const currentRotation = this.calculateCenterRotation(landmarks);
             
             if (currentRotation !== 0) {
                 this.handleRotaryDial(currentRotation);
             }
             
             // Enhanced logging for rotation debugging
-            console.log(`🎛️ Dial Active | Rotation: ${currentRotation} | History: [${this.rotationHistory.map(r => r.toFixed(3)).join(', ')}]`);
+            // console.log(`🎛️ Dial Active | Rotation: ${currentRotation} | History: [${this.rotationHistory.map(r => r.toFixed(3)).join(', ')}]`);
         }
         
         // Update last position
         this.lastHandPosition = {
             x: centerX * window.innerWidth,
             y: centerY * window.innerHeight,
-            z: (thumbTip.z + indexTip.z + middleTip.z) / 3
+            z: (thumbTip.z + indexTip.z + middleTip.z + ringTip.z + pinkyTip.z) / 5
         };
     }
     
-    // Calculate rotation direction and magnitude
-    calculateRotationDirection(landmarks) {
+    // Simple dial formation check - just check if fingers are spread out enough
+    checkSimpleDialFormation(landmarks) {
+        if (!landmarks || landmarks.length < 21) {
+            return false;
+        }
+        
+        const thumbTip = landmarks[4];
+        const indexTip = landmarks[8];
+        const middleTip = landmarks[12];
+        const ringTip = landmarks[16];
+        const pinkyTip = landmarks[20];
+        
+        // Calculate center point
+        const centerX = (thumbTip.x + indexTip.x + middleTip.x + ringTip.x + pinkyTip.x) / 5;
+        const centerY = (thumbTip.y + indexTip.y + middleTip.y + ringTip.y + pinkyTip.y) / 5;
+        
+        // Check if fingers are spread out enough from the center
+        const fingerTips = [thumbTip, indexTip, middleTip, ringTip, pinkyTip];
+        const distances = fingerTips.map(tip => 
+            Math.sqrt(Math.pow(tip.x - centerX, 2) + Math.pow(tip.y - centerY, 2))
+        );
+        
+        const avgDistance = distances.reduce((sum, dist) => sum + dist, 0) / 5;
+        
+        // Simple check: if average distance is reasonable (fingers are spread out)
+        const isSpreadOut = avgDistance > 0.05; // Minimum spread threshold
+        
+        return isSpreadOut;
+    }
+    
+    // Calculate rotation based on center point movement and finger tip positions
+    calculateCenterRotation(landmarks) {
         if (!this.lastFingerPositions) {
-            // First time, just store positions
+            // First time, just store positions for all five fingers
             this.lastFingerPositions = {
                 thumb: { x: landmarks[4].x, y: landmarks[4].y },
                 index: { x: landmarks[8].x, y: landmarks[8].y },
-                middle: { x: landmarks[12].x, y: landmarks[12].y }
+                middle: { x: landmarks[12].x, y: landmarks[12].y },
+                ring: { x: landmarks[16].x, y: landmarks[16].y },
+                pinky: { x: landmarks[20].x, y: landmarks[20].y }
             };
             this.rotationHistory = [];
             return 0;
         }
         
-        // Calculate center points
-        const lastCenterX = (this.lastFingerPositions.thumb.x + this.lastFingerPositions.index.x + this.lastFingerPositions.middle.x) / 3;
-        const lastCenterY = (this.lastFingerPositions.thumb.y + this.lastFingerPositions.index.y + this.lastFingerPositions.middle.y) / 3;
+        // Calculate center points for both current and last positions
+        const lastCenterX = (this.lastFingerPositions.thumb.x + this.lastFingerPositions.index.x + 
+                           this.lastFingerPositions.middle.x + this.lastFingerPositions.ring.x + 
+                           this.lastFingerPositions.pinky.x) / 5;
+        const lastCenterY = (this.lastFingerPositions.thumb.y + this.lastFingerPositions.index.y + 
+                           this.lastFingerPositions.middle.y + this.lastFingerPositions.ring.y + 
+                           this.lastFingerPositions.pinky.y) / 5;
         
-        const currentCenterX = (landmarks[4].x + landmarks[8].x + landmarks[12].x) / 3;
-        const currentCenterY = (landmarks[4].y + landmarks[8].y + landmarks[12].y) / 3;
+        const currentCenterX = (landmarks[4].x + landmarks[8].x + landmarks[12].x + landmarks[16].x + landmarks[20].x) / 5;
+        const currentCenterY = (landmarks[4].y + landmarks[8].y + landmarks[12].y + landmarks[16].y + landmarks[20].y) / 5;
         
-        // Calculate angles from center to each finger tip
-        const lastThumbAngle = Math.atan2(this.lastFingerPositions.thumb.y - lastCenterY, this.lastFingerPositions.thumb.x - lastCenterX);
-        const currentThumbAngle = Math.atan2(landmarks[4].y - currentCenterY, landmarks[4].x - currentCenterX);
+        // Check if center has moved too much (indicates hand movement, not rotation)
+        const centerMovement = Math.sqrt(
+            Math.pow(currentCenterX - lastCenterX, 2) + Math.pow(currentCenterY - lastCenterY, 2)
+        );
+        
+        if (centerMovement > 0.03) { // Allow some center movement
+            // Hand moved too much, reset positions
+            this.lastFingerPositions = {
+                thumb: { x: landmarks[4].x, y: landmarks[4].y },
+                index: { x: landmarks[8].x, y: landmarks[8].y },
+                middle: { x: landmarks[12].x, y: landmarks[12].y },
+                ring: { x: landmarks[16].x, y: landmarks[16].y },
+                pinky: { x: landmarks[20].x, y: landmarks[20].y }
+            };
+            this.rotationHistory = [];
+            return 0;
+        }
+        
+        // Calculate the rotation by looking at how the finger tips move relative to the center
+        // We'll use the thumb as our reference point for rotation
+        const lastThumbAngle = Math.atan2(
+            this.lastFingerPositions.thumb.y - lastCenterY, 
+            this.lastFingerPositions.thumb.x - lastCenterX
+        );
+        const currentThumbAngle = Math.atan2(
+            landmarks[4].y - currentCenterY, 
+            landmarks[4].x - currentCenterX
+        );
         
         // Calculate angle difference
         let angleDiff = currentThumbAngle - lastThumbAngle;
         
         // Normalize angle difference to -π to π range
-        if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-        if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+        angleDiff = this.normalizeAngle(angleDiff);
         
         // Store rotation in history for smoothing
         this.rotationHistory.push(angleDiff);
-        if (this.rotationHistory.length > 5) {
+        if (this.rotationHistory.length > 8) {
             this.rotationHistory.shift();
         }
         
@@ -595,50 +660,70 @@ class SolarSystemApp {
         this.lastFingerPositions = {
             thumb: { x: landmarks[4].x, y: landmarks[4].y },
             index: { x: landmarks[8].x, y: landmarks[8].y },
-            middle: { x: landmarks[12].x, y: landmarks[12].y }
+            middle: { x: landmarks[12].x, y: landmarks[12].y },
+            ring: { x: landmarks[16].x, y: landmarks[16].y },
+            pinky: { x: landmarks[20].x, y: landmarks[20].y }
         };
         
         // Return rotation direction with threshold
-        const threshold = 0.02; // Adjust this value if needed
+        const threshold = 0.02; // Threshold for rotation detection
         if (Math.abs(avgRotation) > threshold) {
-            return avgRotation > 0 ? 1 : -1;
+            return avgRotation > 0 ? 1 : -1; // Positive = clockwise, Negative = counter-clockwise
         }
         
         return 0;
     }
     
-    // Handle rotary dial rotation
+    // Helper method to normalize angles to -π to π range
+    normalizeAngle(angle) {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
+    }
+    
+    // Handle rotary dial rotation with debouncing
     handleRotaryDial(rotationDirection) {
+        const currentTime = Date.now();
+        
+        // Check if enough time has passed since last change
+        if (currentTime - this.lastDetailChangeTime < this.detailChangeCooldown) {
+            return; // Too soon, ignore this rotation
+        }
+        
         const currentLevel = this.detailLevel;
         
         if (rotationDirection > 0) {
             // Clockwise rotation - increase detail level
             switch (currentLevel) {
                 case 'overview':
-                    console.log('🔄 Clockwise → Detailed');
+                    // console.log('🔄 Clockwise → Detailed');
                     this.setDetailLevel('detailed');
+                    this.lastDetailChangeTime = currentTime;
                     break;
                 case 'detailed':
-                    console.log('🔄 Clockwise → Deep');
+                    // console.log('🔄 Clockwise → Deep');
                     this.setDetailLevel('deep');
+                    this.lastDetailChangeTime = currentTime;
                     break;
                 case 'deep':
-                    console.log(' Already at maximum detail');
+                    // console.log(' Already at maximum detail');
                     break;
             }
         } else if (rotationDirection < 0) {
             // Counter-clockwise rotation - decrease detail level
             switch (currentLevel) {
                 case 'deep':
-                    console.log('🔄 Counter-clockwise → Detailed');
+                    // console.log('🔄 Counter-clockwise → Detailed');
                     this.setDetailLevel('detailed');
+                    this.lastDetailChangeTime = currentTime;
                     break;
                 case 'detailed':
-                    console.log('🔄 Counter-clockwise → Overview');
+                    // console.log('🔄 Counter-clockwise → Overview');
                     this.setDetailLevel('overview');
+                    this.lastDetailChangeTime = currentTime;
                     break;
                 case 'overview':
-                    console.log(' Already at minimum detail');
+                    // console.log(' Already at minimum detail');
                     break;
             }
         }
@@ -748,15 +833,15 @@ class SolarSystemApp {
                 );
             });
             
-            // Highlight the three finger tips used for dial detection with special colors
-            if (landmarks[4] && landmarks[8] && landmarks[12]) {
+            // Highlight all five finger tips used for dial detection with special colors
+            if (landmarks[4] && landmarks[8] && landmarks[12] && landmarks[16] && landmarks[20]) {
                 // Thumb tip (4) - BLUE
                 this.ctx.fillStyle = '#0066FF';
                 this.ctx.beginPath();
                 this.ctx.arc(
                     landmarks[4].x * this.canvas.width,
                     landmarks[4].y * this.canvas.height,
-                    8, // Larger circle for thumb
+                    8,
                     0,
                     2 * Math.PI
                 );
@@ -768,7 +853,7 @@ class SolarSystemApp {
                 this.ctx.arc(
                     landmarks[8].x * this.canvas.width,
                     landmarks[8].y * this.canvas.height,
-                    8, // Larger circle for index
+                    8,
                     0,
                     2 * Math.PI
                 );
@@ -780,15 +865,39 @@ class SolarSystemApp {
                 this.ctx.arc(
                     landmarks[12].x * this.canvas.width,
                     landmarks[12].y * this.canvas.height,
-                    8, // Larger circle for middle
+                    8,
+                    0,
+                    2 * Math.PI
+                );
+                this.ctx.fill();
+                
+                // Ring finger tip (16) - ORANGE
+                this.ctx.fillStyle = '#FF8800';
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    landmarks[16].x * this.canvas.width,
+                    landmarks[16].y * this.canvas.height,
+                    8,
+                    0,
+                    2 * Math.PI
+                );
+                this.ctx.fill();
+                
+                // Pinky finger tip (20) - PINK
+                this.ctx.fillStyle = '#FF00FF';
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    landmarks[20].x * this.canvas.width,
+                    landmarks[20].y * this.canvas.height,
+                    8,
                     0,
                     2 * Math.PI
                 );
                 this.ctx.fill();
                 
                 // Draw dial center point
-                const centerX = (landmarks[4].x + landmarks[8].x + landmarks[12].x) / 3;
-                const centerY = (landmarks[4].y + landmarks[8].y + landmarks[12].y) / 3;
+                const centerX = (landmarks[4].x + landmarks[8].x + landmarks[12].x + landmarks[16].x + landmarks[20].x) / 5;
+                const centerY = (landmarks[4].y + landmarks[8].y + landmarks[12].y + landmarks[16].y + landmarks[20].y) / 5;
                 
                 // Center point - WHITE with black border
                 this.ctx.strokeStyle = '#000000';
@@ -798,7 +907,7 @@ class SolarSystemApp {
                 this.ctx.arc(
                     centerX * this.canvas.width,
                     centerY * this.canvas.height,
-                    6,
+                    8, // Slightly larger center for five fingers
                     0,
                     2 * Math.PI
                 );
@@ -810,44 +919,31 @@ class SolarSystemApp {
                 this.ctx.lineWidth = 1;
                 this.ctx.setLineDash([5, 5]); // Dashed lines
                 
-                // Line to thumb (blue)
-                this.ctx.beginPath();
-                this.ctx.moveTo(centerX * this.canvas.width, centerY * this.canvas.height);
-                this.ctx.lineTo(landmarks[4].x * this.canvas.width, landmarks[4].y * this.canvas.height);
-                this.ctx.stroke();
+                const fingerColors = ['#0066FF', '#00FF00', '#FFFF00', '#FF8800', '#FF00FF'];
+                const fingerTips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
+                const fingerNames = ['THUMB', 'INDEX', 'MIDDLE', 'RING', 'PINKY'];
                 
-                // Line to index (green)
-                this.ctx.beginPath();
-                this.ctx.moveTo(centerX * this.canvas.width, centerY * this.canvas.height);
-                this.ctx.lineTo(landmarks[8].x * this.canvas.width, landmarks[8].y * this.canvas.height);
-                this.ctx.stroke();
-                
-                // Line to middle (yellow)
-                this.ctx.beginPath();
-                this.ctx.moveTo(centerX * this.canvas.width, centerY * this.canvas.height);
-                this.ctx.lineTo(landmarks[12].x * this.canvas.width, landmarks[12].y * this.canvas.height);
-                this.ctx.stroke();
+                fingerTips.forEach((tip, index) => {
+                    // Line to finger tip
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(centerX * this.canvas.width, centerY * this.canvas.height);
+                    this.ctx.lineTo(tip.x * this.canvas.width, tip.y * this.canvas.height);
+                    this.ctx.stroke();
+                });
                 
                 // Reset line style
                 this.ctx.setLineDash([]);
                 
-                // Add labels for the three finger tips
+                // Add labels for all five finger tips
                 this.ctx.fillStyle = '#FFFFFF';
-                this.ctx.font = 'bold 12px Arial';
+                this.ctx.font = 'bold 10px Arial';
                 this.ctx.strokeStyle = '#000000';
                 this.ctx.lineWidth = 2;
                 
-                // Thumb label
-                this.ctx.strokeText('THUMB', landmarks[4].x * this.canvas.width + 10, landmarks[4].y * this.canvas.height - 10);
-                this.ctx.fillText('THUMB', landmarks[4].x * this.canvas.width + 10, landmarks[4].y * this.canvas.height - 10);
-                
-                // Index label
-                this.ctx.strokeText('INDEX', landmarks[8].x * this.canvas.width + 10, landmarks[8].y * this.canvas.height - 10);
-                this.ctx.fillText('INDEX', landmarks[8].x * this.canvas.width + 10, landmarks[8].y * this.canvas.height - 10);
-                
-                // Middle label
-                this.ctx.strokeText('MIDDLE', landmarks[12].x * this.canvas.width + 10, landmarks[12].y * this.canvas.height - 10);
-                this.ctx.fillText('MIDDLE', landmarks[12].x * this.canvas.width + 10, landmarks[12].y * this.canvas.height - 10);
+                fingerTips.forEach((tip, index) => {
+                    this.ctx.strokeText(fingerNames[index], tip.x * this.canvas.width + 10, tip.y * this.canvas.height - 10);
+                    this.ctx.fillText(fingerNames[index], tip.x * this.canvas.width + 10, tip.y * this.canvas.height - 10);
+                });
             }
         }
     }
