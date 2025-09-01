@@ -153,6 +153,18 @@ class SolarSystemApp {
         this.lastDetailChangeTime = 0;
         this.detailChangeCooldown = 1000; // 1 second cooldown between changes
         
+        // Swipe gesture detection
+        this.swipeStartPosition = null;
+        this.swipeStartTime = null;
+        this.swipeThreshold = 0.15; // Minimum distance for swipe (15% of screen)
+        this.swipeTimeThreshold = 500; // Maximum time for swipe (500ms)
+        this.lastSwipeTime = 0;
+        this.swipeCooldown = 800; // Cooldown between swipes (800ms)
+        
+        // Continuous swipe detection
+        this.lastPalmPosition = null;
+        this.swipeVelocityThreshold = 0.001; // Much lower threshold for normalized coordinates
+        
         this.init();
     }
     
@@ -450,6 +462,27 @@ class SolarSystemApp {
                 debugInfo += `Hand: ${this.results.landmarks.length} landmarks<br>`;
                 debugInfo += `Current Detail: ${this.detailLevel}<br>`;
                 debugInfo += `Planet: ${this.planets[this.currentPlanetIndex]?.data.name || 'Unknown'}<br>`;
+                
+                // Show lock status and mode
+                if (this.isLocked) {
+                    debugInfo += `Mode: LOCKED (Rotary Dial)<br>`;
+                } else {
+                    debugInfo += `Mode: UNLOCKED (Swipe)<br>`;
+                }
+                
+                // Show palm velocity for swipe detection
+                if (this.lastPalmPosition && this.results.landmarks[0][9]) {
+                    const palmCenter = this.results.landmarks[0][9];
+                    const currentTime = Date.now();
+                    const deltaTime = currentTime - this.lastPalmPosition.time;
+                    if (deltaTime > 0) {
+                        const deltaX = palmCenter.x - this.lastPalmPosition.x;
+                        const velocity = Math.abs(deltaX) / deltaTime;
+                        debugInfo += `Palm Velocity: ${velocity.toFixed(4)}<br>`;
+                        debugInfo += `Delta X: ${deltaX.toFixed(4)}<br>`;
+                        debugInfo += `Delta Time: ${deltaTime}ms<br>`;
+                    }
+                }
             } else {
                 debugInfo += 'Hand: Not detected<br>';
             }
@@ -466,45 +499,21 @@ class SolarSystemApp {
         // console.log('🎯 Processing gesture:', gestureName);
         
         switch (gestureName) {
-            case 'Thumb_up':
-            case 'Thumbs_Up':
-                // console.log('✅ Next planet');
-                this.nextPlanet();
-                break;
-            case 'Thumb_down':
-                // console.log('✅ Previous planet');
-                this.previousPlanet();
-                break;
             case 'Open_Palm':
-                // console.log('✅ Unlocking selection');
                 this.isLocked = false;
+                // Reset any ongoing gestures and rotary dial state
+                this.lastPalmPosition = null;
+                this.lastFingerPositions = null;
+                this.rotationHistory = [];
                 break;
             case 'Closed_Fist':
                 // console.log('✅ Locking selection');
                 this.isLocked = true;
-                break;
-            case 'Pointing_Up':
-                // console.log('✅ Setting detail to deep');
-                this.setDetailLevel('deep');
-                break;
-            case 'Victory':
-                // console.log('✅ Setting detail to detailed');
-                this.setDetailLevel('detailed');
-                break;
-            case 'ILoveYou':
-                // console.log('✅ Setting detail to overview');
-                this.setDetailLevel('overview');
+                // Reset swipe state when locking
+                this.lastPalmPosition = null;
                 break;
             default:
-                // console.log('❓ Unknown gesture:', gestureName);
-                // Try to map similar gestures
-                if (gestureName.includes('Thumb') || gestureName.includes('Up')) {
-                    // console.log('🔄 Mapping to next planet');
-                    this.nextPlanet();
-                } else if (gestureName.includes('Down')) {
-                    // console.log('🔄 Mapping to previous planet');
-                    this.previousPlanet();
-                }
+                break;
         }
     }
     
@@ -533,19 +542,30 @@ class SolarSystemApp {
         // Update last gesture for next frame
         this.lastGesture = isFist ? 'Closed_Fist' : 'Open_Palm';
         
-        // Simple check: if we have a center point and fingers are spread out enough
-        const isDialFormation = this.checkSimpleDialFormation(landmarks);
+        // Process continuous swipe gestures (only when unlocked)
+        if (!this.isLocked) {
+            this.processContinuousSwipe(landmarks);
+            // Ensure rotary dial state is cleared when in swipe mode
+            this.lastFingerPositions = null;
+            this.rotationHistory = [];
+        }
         
-        if (isDialFormation) {
-            // Calculate rotation direction and magnitude based on center point movement
-            const currentRotation = this.calculateCenterRotation(landmarks);
+        // Process rotary dial (only when locked)
+        if (this.isLocked) {
+            // Ensure swipe state is cleared when in rotary dial mode
+            this.lastPalmPosition = null;
             
-            if (currentRotation !== 0) {
-                this.handleRotaryDial(currentRotation);
+            // Simple check: if we have a center point and fingers are spread out enough
+            const isDialFormation = this.checkSimpleDialFormation(landmarks);
+            
+            if (isDialFormation) {
+                // Calculate rotation direction and magnitude based on center point movement
+                const currentRotation = this.calculateCenterRotation(landmarks);
+                
+                if (currentRotation !== 0) {
+                    this.handleRotaryDial(currentRotation);
+                }
             }
-            
-            // Enhanced logging for rotation debugging
-            // console.log(`🎛️ Dial Active | Rotation: ${currentRotation} | History: [${this.rotationHistory.map(r => r.toFixed(3)).join(', ')}]`);
         }
         
         // Update last position
@@ -553,6 +573,68 @@ class SolarSystemApp {
             x: centerX * window.innerWidth,
             y: centerY * window.innerHeight,
             z: (thumbTip.z + indexTip.z + middleTip.z + ringTip.z + pinkyTip.z) / 5
+        };
+    }
+    
+    // Continuous swipe detection using palm center
+    processContinuousSwipe(landmarks) {
+        if (!landmarks || landmarks.length < 21) return;
+        
+        const palmCenter = landmarks[9]; // Palm center landmark
+        const currentTime = Date.now();
+        
+        if (!this.lastPalmPosition) {
+            this.lastPalmPosition = { 
+                x: palmCenter.x, 
+                y: palmCenter.y, 
+                time: currentTime 
+            };
+            console.log('🔄 Initializing palm position:', this.lastPalmPosition);
+            return;
+        }
+        
+        const deltaX = palmCenter.x - this.lastPalmPosition.x;
+        const deltaY = palmCenter.y - this.lastPalmPosition.y;
+        const deltaTime = currentTime - this.lastPalmPosition.time;
+        
+        // Debug logging
+        console.log(` Palm Debug: deltaX=${deltaX.toFixed(4)}, deltaY=${deltaY.toFixed(4)}, deltaTime=${deltaTime}ms`);
+        
+        // Only process if enough time has passed (avoid too frequent updates)
+        if (deltaTime < 16) return; // ~60fps
+        
+        // Calculate velocity
+        const velocity = Math.abs(deltaX) / deltaTime;
+        console.log(`📊 Velocity: ${velocity.toFixed(4)} pixels/ms (threshold: ${this.swipeVelocityThreshold})`);
+        
+        // Check for fast horizontal movement (swipe) - adjusted thresholds
+        if (deltaTime > 0 && Math.abs(deltaX) > 0.01 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+            console.log(`✅ Swipe conditions met: deltaX=${Math.abs(deltaX).toFixed(4)}, deltaY=${Math.abs(deltaY).toFixed(4)}`);
+            
+            // Check if velocity is high enough and cooldown has passed
+            if (velocity > this.swipeVelocityThreshold && currentTime - this.lastSwipeTime > this.swipeCooldown) {
+                if (deltaX > 0) {
+                    // Swipe right - next planet
+                    console.log(' Swipe Right - Next Planet');
+                    this.nextPlanet();
+                } else {
+                    // Swipe left - previous planet
+                    console.log('👈 Swipe Left - Previous Planet');
+                    this.previousPlanet();
+                }
+                this.lastSwipeTime = currentTime;
+            } else {
+                console.log(`❌ Velocity too low or cooldown active: velocity=${velocity.toFixed(4)}, cooldown=${currentTime - this.lastSwipeTime}ms`);
+            }
+        } else {
+            console.log(`❌ Swipe conditions not met: deltaX=${Math.abs(deltaX).toFixed(4)}, deltaY=${Math.abs(deltaY).toFixed(4)}`);
+        }
+        
+        // Update last palm position
+        this.lastPalmPosition = { 
+            x: palmCenter.x, 
+            y: palmCenter.y, 
+            time: currentTime 
         };
     }
     
