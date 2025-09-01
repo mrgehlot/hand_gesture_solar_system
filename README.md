@@ -96,7 +96,3 @@ The application provides real-time visual feedback:
 - Modern browser with WebGL support
 - HTTPS connection (required for camera access)
 - Camera device for hand tracking
-
-## File Structure
-
-```
