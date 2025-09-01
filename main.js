@@ -546,6 +546,8 @@ class SolarSystemApp {
         // Continue processing
         if (this.webcamRunning) {
             requestAnimationFrame(() => this.predictWebcam());
+        } else {
+            
         }
     }
     
@@ -561,17 +563,22 @@ class SolarSystemApp {
             const gestureName = gesture.categoryName;
             const confidence = gesture.score;
             
-            
             // Process gestures with lower confidence threshold
             if (confidence > 0.7) {
                 this.handleGesture(gestureName);
+            } else{
+
             }
+        } else {
+
         }
         
         // Process hand position for detail level
         if (this.results.landmarks && this.results.landmarks.length > 0) {
             const landmarks = this.results.landmarks[0];
             this.processHandPosition(landmarks);
+        } else {
+
         }
     }
     
@@ -627,7 +634,6 @@ class SolarSystemApp {
     }
     
     handleGesture(gestureName) {
-        
         switch (gestureName) {
             case 'Open_Palm':
                 this.isLocked = false;
@@ -744,7 +750,11 @@ class SolarSystemApp {
                     this.previousPlanet();
                 }
                 this.lastSwipeTime = currentTime;
-            } 
+            } else {
+
+            }
+        } else {
+            
         }
         
         // Update last palm position
